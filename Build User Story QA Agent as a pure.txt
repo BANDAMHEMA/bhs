@@ -1,0 +1,34 @@
+Build "User Story QA Agent" as a pure Python, rule-based tool.
+HARD RULES:
+- NO LLM/AI/Genie/OpenAI calls at runtime. Code only.
+- Deterministic: same input = same output. No guessing.
+- No manual input except the Story ID. Where a rule can't decide, output "Not detected" (never ask QA).
+
+INPUT: one widget (dbutils.widgets.text, or streamlit text_input) for Story ID.
+
+LIBRARIES (all non-LLM):
+- requests -> fetch story by ID from <Azure DevOps/Jira API URL>, auth via secret/env var
+- re + rapidfuzz -> keyword and fuzzy matching (threshold 90)
+- spaCy PhraseMatcher (blank "en" model, no downloaded LLM) -> whole-phrase keyword matching
+- beautifulsoup4 -> strip HTML from story fields
+- openpyxl/pandas -> read TTSM if Excel; pdfplumber -> if PDF; python-docx -> if Word
+- pydantic -> validate output schema
+- jinja2 / pandas -> fixed output table
+
+LOGIC (in order):
+1. Fetch story. If missing: print "Story not found", stop.
+2. Eligibility: column == "SQA Ready" AND "QA Testing" in tags (case-insensitive). Print Present/Not present for each. If either missing: print "Not eligible", stop.
+3. Extract title, description, acceptance criteria (split on "Acceptance Criteria" heading and on Given/When/Then or bullet lines). Each line = one item to validate.
+4. TTSM: find attachment/link, parse sheet into table: source table, source column, target table, target column, transformation, key, load type. Map columns by header names (config dict, fuzzy match). Output as table. If none: "No TTSM attached".
+5. Test-case matching: config dict below. Search story text + TTSM text. Applicable if any keyword matches, else Not applicable. Show matched text as evidence.
+ ADF testing: pipeline, adf, copy activity, trigger, dataflow
+ Count check: row count, records, source and target load
+ Schema check: column, datatype, mapping, new table, schema
+ Duplicate check: primary key, unique, duplicate, merge key
+ Incremental testing: incremental, delta, watermark, cdc, last modified
+ Downstream testing: downstream, view, report, dependent, consumer
+ Verify data: transformation, business rule, mapping logic, sample data
+ Also: if TTSM load type = incremental -> Incremental = Applicable.
+
+OUTPUT (fixed): Eligibility | Story summary | Items to validate | TTSM table | Test case table (Test case | Applicable | Evidence)
+Keep keyword dict in one editable config. Keep code compact; no comments or explanations in the reply.
